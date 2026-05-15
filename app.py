@@ -6,7 +6,14 @@ import time
 from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
+app.json.ensure_ascii = False
 CORS(app)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+file_handler = RotatingFileHandler(filename="app.log", maxBytes=1024*1024, backupCount=3)
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+logger.addHandler(file_handler)
 
 def get_db_connection():
     conn = sqlite3.connect("poliklinika.db")
@@ -135,8 +142,8 @@ def get_patient():
 
 @app.route("/api/patients", methods=["POST"])
 def add_patient():
-    logger.info(f"POST /api/patients from {request.remote_addr}")
     start_time = time.time()
+    logger.info(f"POST /api/patients from {request.remote_addr}")
     data = request.get_json()
     
     if not data:
@@ -206,7 +213,7 @@ def get_doctors():
 
     try:
         doctors = conn.execute('''
-                               SELECT d.doctor_id, d.full_name, s.specialisation
+                               SELECT d.doctor_id, d.full_name, s.specialisation_name
                                FROM Doctors d
                                JOIN Specialisations s ON d.specialisation_id = s.specialisation_id''').fetchall()
 
@@ -235,7 +242,7 @@ def get_appointment():
                                     FROM Appointments a
                                     JOIN Patients p ON a.patient_id = p.patient_id
                                     JOIN Doctors d ON a.doctor_id = d.doctor_id
-                                    JOIN Specialisation s ON d.specialisation_id = s.specialisation_id''').fetchall()
+                                    JOIN Specialisations s ON d.specialisation_id = s.specialisation_id''').fetchall()
         
         result = [dict(row) for row in appointments]
         duration = time.time() - start_time
@@ -276,13 +283,3 @@ if __name__ == "__main__":
     init_db()
     insert_test_data()
     app.run(debug=True)
-
-################################################################################################
-#АААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААА#
-################################################################################################
-
-logging.basicConfig(level=logging.info)
-logger = logging.getLogger(__name__)
-file_handler = RotatingFileHandler(filename="app.log", maxBytes=1024*1024, backupCount=3)
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-logger.addHandler(file_handler)
