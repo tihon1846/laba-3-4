@@ -113,15 +113,21 @@ def home():
 
 @app.route("/api/patients", methods=["GET"])
 def get_patient():
+    start_time = time.time()
     conn = get_db_connection()
+
+    logger.info(f"GET /api/patients from {request.remote_addr}")
 
     try:
         patients = conn.execute("SELECT * FROM patients").fetchall()
         result = [dict(row) for row in patients]
+        duration = time.time() - start_time
+        logger.info(f"Request completed in {duration:.4f} sec")
         return jsonify(result), 200
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Database error: {str(e)}")
+        return jsonify({"error": "Ошибка сервера"}), 500
     
     finally:
         conn.close()
@@ -129,9 +135,13 @@ def get_patient():
 
 @app.route("/api/patients", methods=["POST"])
 def add_patient():
+    logger.info(f"POST /api/patients from {request.remote_addr}")
+    start_time = time.time()
     data = request.get_json()
+    
     if not data:
-        return jsonify({'error': "данных нет"}), 405
+        logger.warning("Пустой JSON")
+        return jsonify({"error": "Нет данных"}), 400
     
     if not data.get("full_name"):
         return jsonify({'error': "обязательное поле ввода"}), 406
@@ -147,26 +157,39 @@ def add_patient():
                     (data.get("full_name"), data.get("phone"), data.get("adress"), data.get("birthday_date")))
 
         conn.commit()
-        return jsonify({'message': "пациент добавлен"}), 407
+
+        duration = time.time() - start_time
+        logger.info(f"Patient added: {data.get('full_name')}")
+        logger.info(f"Request completed in {duration:.4f} sec")
+        
+        return jsonify({"message": "Пациент добавлен", "patient_id": cursor.lastrowid}), 201
     
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": str(e)}), 408
+
+        logger.error(f"Database error: {str(e)}")
+        return jsonify({"error": "Ошибка базы данных"}), 500
     
     finally:
         conn.close()
 
 @app.route("/api/patients/<int:patient_id>", methods=["GET"])
 def get_patient_by_id(patient_id):
+    start_time = time.time()
     conn = get_db_connection()
+
+    logger.info(f"GET /api/patients/<int:patient_id> from {request.remote_addr}")
 
     try:
         patients = conn.execute("SELECT * FROM Patients WHERE patient_id = ?", (patient_id,)).fetchone()
         if patients is None:
             return jsonify({'error': "пациент не найден"}), 404
+        duration = time.time() - start_time
+        logger.info(f"Request completed in {duration:.4f} sec")
         return jsonify(dict(patients))
 
     except Exception as e:
+        logger.error(f"Database error: {str(e)}")
         return jsonify({'error': str(e)}), 500
     
     finally:
@@ -176,7 +199,10 @@ def get_patient_by_id(patient_id):
 
 @app.route("/api/doctors", methods=["GET"])
 def get_doctors():
+    start_time = time.time()
     conn = get_db_connection()
+
+    logger.info(f"GET /api/doctors from {request.remote_addr}")
 
     try:
         doctors = conn.execute('''
@@ -185,9 +211,12 @@ def get_doctors():
                                JOIN Specialisations s ON d.specialisation_id = s.specialisation_id''').fetchall()
 
         result = [dict(row) for row in doctors]
+        duration = time.time() - start_time
+        logger.info(f"Request completed in {duration:.4f} sec")
         return jsonify(result), 200
     
     except Exception as e:
+        logger.error(f"Database error: {str(e)}")
         return jsonify({'error': str(e)}), 501
     
     finally:
@@ -195,8 +224,11 @@ def get_doctors():
 
 @app.route("/api/appointments", methods=["GET"])
 def get_appointment():
+    start_time = time.time()
     conn = get_db_connection()
 
+    logger.info(f"GET /api/appointments from {request.remote_addr}")
+    
     try:
         appointments = conn.execute('''
                                     SELECT a.appointment_id, p.full_name AS patient_name, d.full_name AS doctor_name, s.specialisation_name, a.appointment_date, a.diagnosis
@@ -206,9 +238,12 @@ def get_appointment():
                                     JOIN Specialisation s ON d.specialisation_id = s.specialisation_id''').fetchall()
         
         result = [dict(row) for row in appointments]
+        duration = time.time() - start_time
+        logger.info(f"Request completed in {duration:.4f} sec")
         return jsonify(result), 200
     
     except Exception as e:
+        logger.error(f"Database error: {str(e)}")
         return jsonify({'error': str(e)}), 502
     
     finally:
@@ -216,16 +251,22 @@ def get_appointment():
 
 @app.route("/api/medicines", methods=["GET"])
 def get_medicines():
+    start_time = time.time()
     conn = get_db_connection()
+
+    logger.info(f"GET /api/medicines from {request.remote_addr}")
 
     try:
         medicines = conn.execute('''
                                 SELECT * FROM Medicines''').fetchall()
         
         result = [dict(row) for row in medicines]
+        duration = time.time() - start_time
+        logger.info(f"Request completed in {duration:.4f} sec")
         return jsonify(result), 200
     
     except Exception as e:
+        logger.error(f"Database error: {str(e)}")
         return jsonify({'error': str(e)}), 503
     
     finally:
